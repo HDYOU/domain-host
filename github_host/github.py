@@ -10,14 +10,23 @@ import os
 import datetime
 from github_host import get_ip_utils
 from github_host.libs.json_conf import JsonConf
+import threading
 
+# 要并发执行的任务函数
+def task(site, addr2ip):
+    if site == None:
+        return
+    trueip = get_ip_utils.getIpFromipapi(site)
+    if trueip != None:
+        addr2ip[site] = trueip
+    print(site + "\t" + trueip)
 
 class Github(object):
 
     def __init__(self):
         self.jsonConf = JsonConf()
         self.conf = self.jsonConf.load()
-        self.sites = self.conf.get('sites')
+        self.sites = list(set(self.conf.get('sites')))
         self.addr2ip = {}
         self.hostLocation = r"data/hosts"
         self.hostRouterosLocation = r"data/hosts-routeros.txt"
@@ -47,11 +56,20 @@ class Github(object):
     # 更新host, 并刷新本地DNS
     def updateHost(self):
         today = datetime.date.today()
+
+        # 创建线程列表
+        threads = []
+
         for site in self.sites:
-            trueip = get_ip_utils.getIpFromipapi(site)
-            if trueip != None:
-                self.addr2ip[site] = trueip
-                print(site + "\t" + trueip)
+            if site != None:
+                t = threading.Thread(target=task, args=(site, self.addr2ip))
+                threads.append(t)
+                t.start()
+        
+        # 等待所有线程完成
+        for t in threads:
+            t.join()
+
         with open(self.hostLocation, "r") as f1:
             f1_lines = f1.readlines()
             with open("temphost", "w") as f2:
