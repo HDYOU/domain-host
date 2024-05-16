@@ -1,0 +1,9 @@
+#*********************github 2024-05-16 update********************
+#******* get latest hosts: http://blog.yoqi.me/lyq/16489.html
+add address=168.95.246.3 name=imageproxy.pimg.tw
+add address=76.76.21.9 name=bandwidth-hero-six.vercel.app
+add address=76.76.21.22 name=bandwidth-hero-cfg-wy12.vercel.app
+add address=104.21.66.108 name=down.npee.cn
+add address=104.21.83.230 name=get.66a.vip
+add address=144.22.239.90 name=mirror.ghproxy.com
+add address=141.147.152.25 name=ghproxy.com

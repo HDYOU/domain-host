@@ -1,0 +1,108 @@
+name: auto CI
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      ssh:
+        description: 'SSH connection to Actions'
+        required: false
+        default: 'false'
+  watch:
+    types: [ started ]
+  push:
+    branches: [ master, mian ]
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/issue_moderator.yml'
+  pull_request:
+    branches: [ master, mian ]
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/issue_moderator.yml'
+  schedule:
+  - cron: "0 2 * * *"
+
+
+# only one run
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true  # true false
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        
+      - name: Setup Python and Pip Cache
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: |
+            **/requirements*.txt
+            **/setup.py
+            **/pyproject.toml
+            **/setup.cfg
+
+      - name: Install dependencies
+        run: |
+          # python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Update Deny Host
+        run: |
+          pwd
+          mkdir -p data
+          echo "" > data/hosts
+          echo "" > data/hosts-routeros.txt
+          python main.py
+
+      # - name: Push to built branch
+        # uses: stefanzweifel/git-auto-commit-action@v5
+        # with:
+          # branch: 'master'
+          # commit_message: 'Update Host'
+           # Optional commit user and author settings
+          # commit_user_name: github-actions[bot] # defaults to "github-actions[bot]"
+          # commit_user_email: actions@github.com # defaults to "41898282+github-actions[bot]@users.noreply.github.com"
+          # commit_author: Author <actions@github.com> # defaults to "username <username@users.noreply.github.com>", where "username" belongs to the author of the commit that triggered the run
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        #   token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Git push assets to Github
+        continue-on-error: false
+        run: |
+          mv .git data/
+          cd data
+          ls -lh
+          export new_branch="auto_data"
+          git init
+          git config --local user.name "GitHub Action"
+          git config --local user.email "action@github.com"
+          git branch -m ${new_branch}
+          git add .
+          git add --all
+          git checkout --orphan new_branch
+          git add -A
+          git commit -am "Updated at $(TZ=UTC-8 date +'%Y-%m-%d %H:%M:%S')"
+          git branch -D ${new_branch} 
+          git branch -m ${new_branch}
+          git branch -M ${new_branch}
+          git tag -l | xargs git tag -d
+          git push --force --set-upstream origin ${new_branch}
+
+
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 2
