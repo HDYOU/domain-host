@@ -17,8 +17,9 @@ def task(site, addr2ip):
     if site == None:
         return
     trueip = get_ip_utils.getIpFromipapi(site)
-    if trueip != None:
-        addr2ip[site] = trueip
+    if trueip == None:
+        return
+    addr2ip[site] = trueip
     print(site + "\t" + trueip)
 
 class Github(object):
